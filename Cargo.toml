@@ -1,0 +1,8 @@
+[package]
+name = "halo2-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+halo2_proofs = { git = "https://github.com/perturbing/halo2" }
+rand_core = "0.6.4"
