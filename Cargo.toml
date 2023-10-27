@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-halo2_proofs = { git = "https://github.com/perturbing/halo2" }
+#halo2_proofs = { git = "https://github.com/perturbing/halo2" }
+halo2_proofs = { path = "./../halo2/halo2_proofs" }
 rand_core = "0.6.4"

@@ -173,7 +173,7 @@ impl StandardPlonk {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct ExampleCircuit {
     secret_a: Scalar,
     secret_b: Scalar,
@@ -248,6 +248,7 @@ impl Circuit<Scalar> for ExampleCircuit {
 fn main() {
     // proving that we know a tuple (a,b) s.t a * b = a + b (only solutions are (2,2) and (0,0))
     let example = ExampleCircuit { secret_a: Scalar::from(0), secret_b: Scalar::from(0) };
+    // println!("Example: {:?}", example);
 
     let mut rng = OsRng;
     let params: ParamsKZG<Bls12> = ParamsKZG::setup(3, &mut rng);
@@ -258,7 +259,7 @@ fn main() {
     // println!("PK: {:?}", pk);
 
     let mut transcript = Blake2bWrite::<_, _, Challenge255<G1Affine>>::init(vec![]);
-    // println!("Transcript: {:?}", transcript);
+    // println!("Transcript0: {:?}", transcript);
 
     create_proof::<KZGCommitmentScheme<Bls12>, ProverGWC<Bls12>, _, _, _, _>(
         &params,
@@ -268,16 +269,26 @@ fn main() {
         rng,
         &mut transcript,
     ).expect("Proof generation failed");
+ 
+    // println!("Transcript1: {:?}", transcript);
 
     let proof = transcript.finalize();
     // println!("Proof: {:?}", proof);
 
     let verifier = SingleStrategy::new(&params);
-    let mut transcript = Blake2bRead::<_, _, Challenge255<G1Affine>>::init(proof.as_slice());
+    let mut transcriptt = Blake2bRead::<_, _, Challenge255<G1Affine>>::init(proof.as_slice());
+    // println!("Transcript2: {:?}", transcriptt);
 
-    verify_proof::<_, VerifierGWC<Bls12>, _, _, _>(&params, &pk.get_vk(), verifier, &[&[]], &mut transcript).expect("Verification failed");
-
-    // let pi: Vec<Vec<_>> = vec![];
+    // println!("Transcript: {:?}", transcript);
+    verify_proof::<_, VerifierGWC<Bls12>, _, _, _>(
+        &params,
+        &pk.get_vk(),
+        verifier,
+        &[&[]],
+        &mut transcriptt
+    ).expect("Verification failed");
+    // println!("Transcript: {:?}", transcript);
+    // let pi: Vec<Vec<_>> = vec![vec![];0]; // instead of vec![vec![]]
     // let circuit = MockProver::run(3, &example, pi).expect("Prover failed");
     
     // circuit.assert_satisfied_par();
