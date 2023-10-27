@@ -11,8 +11,11 @@ use halo2_proofs::poly::kzg::strategy::SingleStrategy;
 use halo2_proofs::poly::kzg::commitment::{KZGCommitmentScheme, ParamsKZG};
 use halo2_proofs::poly::kzg::multiopen::{ProverGWC, VerifierGWC};
 use halo2_proofs::poly::Rotation;
-use halo2_proofs::transcript::{Blake2bRead, Blake2bWrite, Challenge255, TranscriptReadBuffer, TranscriptWriterBuffer};
-use rand_core::OsRng;
+use halo2_proofs::transcript::{Blake2bRead, Blake2bWrite, Challenge255, TranscriptReadBuffer, TranscriptWriterBuffer, TranscriptRead};
+// use rand_core::{OsRng, RngCore};
+use rand::{Rng, SeedableRng};
+use rand::rngs::StdRng;
+
 
 #[derive(Clone)]
 struct PlonkConfig {
@@ -250,16 +253,18 @@ fn main() {
     let example = ExampleCircuit { secret_a: Scalar::from(0), secret_b: Scalar::from(0) };
     // println!("Example: {:?}", example);
 
-    let mut rng = OsRng;
+    // let mut rng = OsRng;
+    let seed = [0u8; 32];  // Choose a fixed seed for testing
+    let mut rng: StdRng = SeedableRng::from_seed(seed);
+
     let params: ParamsKZG<Bls12> = ParamsKZG::setup(3, &mut rng);
-    // println!("Params: {:?}", params);
+
     let vk = keygen_vk(&params, &example).expect("VK failed to generate");
-    // println!("VK: {:?}", vk);
+    println!("VK: {:?}", vk);
     let pk = keygen_pk(&params, vk, &example).expect("PK failed to generate");
     // println!("PK: {:?}", pk);
 
     let mut transcript = Blake2bWrite::<_, _, Challenge255<G1Affine>>::init(vec![]);
-    // println!("Transcript0: {:?}", transcript);
 
     create_proof::<KZGCommitmentScheme<Bls12>, ProverGWC<Bls12>, _, _, _, _>(
         &params,
@@ -269,7 +274,6 @@ fn main() {
         rng,
         &mut transcript,
     ).expect("Proof generation failed");
- 
     // println!("Transcript1: {:?}", transcript);
 
     let proof = transcript.finalize();
@@ -277,9 +281,7 @@ fn main() {
 
     let verifier = SingleStrategy::new(&params);
     let mut transcriptt = Blake2bRead::<_, _, Challenge255<G1Affine>>::init(proof.as_slice());
-    // println!("Transcript2: {:?}", transcriptt);
 
-    // println!("Transcript: {:?}", transcript);
     verify_proof::<_, VerifierGWC<Bls12>, _, _, _>(
         &params,
         &pk.get_vk(),
