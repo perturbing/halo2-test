@@ -1,7 +1,10 @@
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 #![allow(dead_code)]
-use halo2_proofs::plonk::{Advice, Circuit, Column, ConstraintSystem, create_proof, Error, Fixed, keygen_pk, keygen_vk, verify_proof};
+use core::num;
+
+use halo2_proofs::halo2curves::bn256::G1;
+use halo2_proofs::plonk::{Advice, vanishing, Circuit, Column, ConstraintSystem, create_proof, Error, Fixed, keygen_pk, keygen_vk, verify_proof};
 use halo2_proofs::halo2curves::bls12_381::{Bls12, G1Affine, Scalar};
 use halo2_proofs::halo2curves::ff::Field;
 use halo2_proofs::circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value};
@@ -12,6 +15,8 @@ use halo2_proofs::poly::kzg::commitment::{KZGCommitmentScheme, ParamsKZG};
 use halo2_proofs::poly::kzg::multiopen::{ProverGWC, VerifierGWC};
 use halo2_proofs::poly::Rotation;
 use halo2_proofs::transcript::{Blake2bRead, Blake2bWrite, Challenge255, TranscriptReadBuffer, TranscriptWriterBuffer, TranscriptRead};
+use halo2_proofs::transcript::Transcript;
+use halo2_proofs::poly::commitment::Params;
 // use rand_core::{OsRng, RngCore};
 use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
@@ -260,7 +265,7 @@ fn main() {
     let params: ParamsKZG<Bls12> = ParamsKZG::setup(3, &mut rng);
 
     let vk = keygen_vk(&params, &example).expect("VK failed to generate");
-    println!("VK: {:?}", vk);
+    // println!("VK: {:?}", vk.permutation());
     let pk = keygen_pk(&params, vk, &example).expect("PK failed to generate");
     // println!("PK: {:?}", pk);
 
@@ -280,20 +285,131 @@ fn main() {
     // println!("Proof: {:?}", proof);
 
     let verifier = SingleStrategy::new(&params);
-    let mut transcriptt = Blake2bRead::<_, _, Challenge255<G1Affine>>::init(proof.as_slice());
+    let mut transcript2 = Blake2bRead::<_, _, Challenge255<G1Affine>>::init(proof.as_slice());
+    // println!("Transcript2: {:?}", transcript2);
 
     verify_proof::<_, VerifierGWC<Bls12>, _, _, _>(
         &params,
         &pk.get_vk(),
         verifier,
         &[&[]],
-        &mut transcriptt
+        &mut transcript2
     ).expect("Verification failed");
-    // println!("Transcript: {:?}", transcript);
-    // let pi: Vec<Vec<_>> = vec![vec![];0]; // instead of vec![vec![]]
-    // let circuit = MockProver::run(3, &example, pi).expect("Prover failed");
-    
-    // circuit.assert_satisfied_par();
 
+    // mimic the verifier from this point
+
+    let mut transcript3 = Blake2bRead::<_, _, Challenge255<G1Affine>>::init(proof.as_slice());
+    // println!("Transcript3: {:?}", transcript3);
+
+    // add verifiers key hash to hash buffer
+    pk.get_vk().hash_into(&mut transcript3).expect("Failed to hash into");
+
+    // add first three point to hash buffer and remove from transcript
+    let advice_commitments: Vec<G1Affine> = (0..3)
+        .map(|_| transcript3.read_point().expect("Failed to read point"))
+        .collect();
+    // println!("advice_commitments1: {:?}", advice_commitments);
+
+    let challenges: Vec<G1Affine> = [].to_vec();
+    // println!("challenges: {:?}", challenges);
+
+    let theta = transcript3.squeeze_challenge_scalar::<()>();
+    // println!("theta1: {:?}", theta);
+
+    let lookups_permuted: Vec<Vec<G1Affine>> = [[].to_vec()].to_vec();
+    // println!("lookups_permuted: {:?}", lookups_permuted);
+
+    let beta = transcript3.squeeze_challenge_scalar::<()>();
+    // println!("beta1: {:?}", beta);
+
+    let gamma = transcript3.squeeze_challenge_scalar::<()>();
+    // println!("gamma1: {:?}", gamma);
+
+    let permutations_committed = transcript3.read_point().expect("Failed to read point");
+    // println!("permutations_committed1: {:?}", permutations_committed);
+
+    let lookups_committed: Vec<Vec<G1Affine>> = [[].to_vec()].to_vec();
+    // println!("lookups_committed1: {:?}", lookups_committed);
+
+    // this is part of vanishing object
+    let random_poly_commitment = transcript3.read_point().expect("Failed to read point");
+    // println!("random_poly_commitment: {:?}", random_poly_commitment);
+    
+    let y = transcript3.squeeze_challenge_scalar::<()>();
+    // println!("y1: {:?}", y);
+
+    // this is part of vanishing object
+    let h_commitments: Vec<G1Affine> = (0..2)
+        .map(|_| transcript3.read_point().expect("Failed to read point"))
+        .collect();
+    // println!("h_commitments1: {:?}", h_commitments);
+
+    let x = transcript3.squeeze_challenge_scalar::<()>();
+    // println!("x1: {:?}", x);
+
+    let xn = x.pow(&[params.n() as u64, 0, 0, 0]);
+    // println!("xn1: {:?}", xn);
+
+    let min_rotation: i32 = 0;
+    let max_rotation: i32 = 0;
+    let max_instance_len: i32 = 0;
+
+    // there are no public inputs (instances), so it makes sense that this is []
+    let l_i_s = pk.get_vk().get_domain().l_i_range(
+        *x,
+        xn,
+        -max_rotation..max_instance_len as i32 + min_rotation.abs());
+    
+    let instances: Vec<Vec<Scalar>> = [[].to_vec()].to_vec();
+    // println!("instances1: {:?}", instances);
+
+    let advice_evals = (0..3)
+        .map(|_| transcript3.read_scalar().expect(""))
+        .collect::<Vec<_>>();
+    // println!("advice_evals1: {:?}", advice_evals);
+
+    let fixed_evals = (0..4)
+        .map(|_| transcript3.read_scalar().expect(""))
+        .collect::<Vec<_>>();
+    // println!("fixed_evals1: {:?}", fixed_evals);
+    
+    // part of vanishing object
+    let random_eval : Scalar = transcript3.read_scalar().expect("");
+    // println!("random_eval1: {:?}", random_eval);
+
+    // this is contained in the permutatuins_common object
+    let permutation_evals = (0..1)
+        .map(|_| transcript3.read_scalar().expect(""))
+        .collect::<Vec<_>>();
+    // println!("permutation_evals1: {:?}", permutation_evals);
+
+    // note that the permuatuins_evaluated objectet also has the commited G1 point 
+    // for the permutation
+    let permutation_product_eval = transcript3.read_scalar().expect("");
+    // println!("permutation_product_eval1: {:?}", permutation_product_eval);
+
+    let permutation_product_next_eval = transcript3.read_scalar().expect("");
+    // println!("permutation_product_next_eval1: {:?}", permutation_product_next_eval);
+
+    let lookups_evaluated: Vec<Vec<Scalar>> = [[].to_vec()].to_vec();
+    // println!("lookups_evaluated1: {:?}", lookups_evaluated);
+
+    // TODO: Understand construction of queries and below link with pairing check
+
+    // this is inside the gwc verifier https://github.com/perturbing/halo2/blob/main/halo2_proofs/src/poly/kzg/multiopen/gwc/verifier.rs
+    let v = transcript3.squeeze_challenge_scalar::<()>();
+    println!("v1: {:?}", v);
+
+    let w: Vec<G1Affine> = (0..2)
+        .map(|_| transcript3.read_point().expect(""))
+        .collect::<Vec<_>>();
+    // println!("w1: {:?}", w);
+
+    let u = transcript3.squeeze_challenge_scalar::<()>();
+    println!("u1: {:?}", u);
+    
     println!("Passed");
 }
+
+    // let permutations_common_non_evaluated  = pk.get_vk().permutation();
+    // println!("permutations_common_non_evaluated: {:?}", permutations_common_non_evaluated);
