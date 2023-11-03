@@ -255,8 +255,7 @@ impl Circuit<Scalar> for ExampleCircuit {
 
 fn main() {
     // proving that we know a tuple (a,b) s.t a * b = a + b (only solutions are (2,2) and (0,0))
-    let example = ExampleCircuit { secret_a: Scalar::from(0), secret_b: Scalar::from(0) };
-    // println!("Example: {:?}", example);
+    let example = ExampleCircuit { secret_a: Scalar::from(2), secret_b: Scalar::from(2) };
 
     // let mut rng = OsRng;
     let seed = [0u8; 32];  // Choose a fixed seed for testing
@@ -265,7 +264,7 @@ fn main() {
     let params: ParamsKZG<Bls12> = ParamsKZG::setup(3, &mut rng);
 
     let vk = keygen_vk(&params, &example).expect("VK failed to generate");
-    // println!("VK: {:?}", vk.permutation());
+    // println!("VK: {:?}", vk.cs);
     let pk = keygen_pk(&params, vk, &example).expect("PK failed to generate");
     // println!("PK: {:?}", pk);
 
@@ -298,10 +297,12 @@ fn main() {
 
     // mimic the verifier from this point
 
+    // let proof = [].to_vec();
     let mut transcript3 = Blake2bRead::<_, _, Challenge255<G1Affine>>::init(proof.as_slice());
+
     // println!("Transcript3: {:?}", transcript3);
 
-    // add verifiers key hash to hash buffer
+    // // add verifiers key hash to hash buffer
     pk.get_vk().hash_into(&mut transcript3).expect("Failed to hash into");
 
     // add first three point to hash buffer and remove from transcript
@@ -314,99 +315,108 @@ fn main() {
     // println!("challenges: {:?}", challenges);
 
     let theta = transcript3.squeeze_challenge_scalar::<()>();
-    // println!("theta1: {:?}", theta);
+    println!("theta1: {:?}", theta);
 
-    let lookups_permuted: Vec<Vec<G1Affine>> = [[].to_vec()].to_vec();
-    // println!("lookups_permuted: {:?}", lookups_permuted);
+    // let lookups_permuted: Vec<Vec<G1Affine>> = [[].to_vec()].to_vec();
+    // // println!("lookups_permuted: {:?}", lookups_permuted);
 
-    let beta = transcript3.squeeze_challenge_scalar::<()>();
-    // println!("beta1: {:?}", beta);
+    // let beta = transcript3.squeeze_challenge_scalar::<()>();
+    // // println!("beta1: {:?}", beta);
 
-    let gamma = transcript3.squeeze_challenge_scalar::<()>();
-    // println!("gamma1: {:?}", gamma);
+    // let gamma = transcript3.squeeze_challenge_scalar::<()>();
+    // // println!("gamma1: {:?}", gamma);
 
-    let permutations_committed = transcript3.read_point().expect("Failed to read point");
-    // println!("permutations_committed1: {:?}", permutations_committed);
+    // let permutations_committed = transcript3.read_point().expect("Failed to read point");
+    // // println!("permutations_committed1: {:?}", permutations_committed);
 
-    let lookups_committed: Vec<Vec<G1Affine>> = [[].to_vec()].to_vec();
-    // println!("lookups_committed1: {:?}", lookups_committed);
+    // let lookups_committed: Vec<Vec<G1Affine>> = [[].to_vec()].to_vec();
+    // // println!("lookups_committed1: {:?}", lookups_committed);
 
-    // this is part of vanishing object
-    let random_poly_commitment = transcript3.read_point().expect("Failed to read point");
-    // println!("random_poly_commitment: {:?}", random_poly_commitment);
+    // // this is part of vanishing object
+    // let random_poly_commitment = transcript3.read_point().expect("Failed to read point");
+    // // println!("random_poly_commitment: {:?}", random_poly_commitment);
     
-    let y = transcript3.squeeze_challenge_scalar::<()>();
-    // println!("y1: {:?}", y);
+    // let y = transcript3.squeeze_challenge_scalar::<()>();
+    // // println!("y1: {:?}", y);
 
-    // this is part of vanishing object
-    let h_commitments: Vec<G1Affine> = (0..2)
-        .map(|_| transcript3.read_point().expect("Failed to read point"))
-        .collect();
-    // println!("h_commitments1: {:?}", h_commitments);
+    // // this is part of vanishing object
+    // let h_commitments: Vec<G1Affine> = (0..2)
+    //     .map(|_| transcript3.read_point().expect("Failed to read point"))
+    //     .collect();
+    // // println!("h_commitments1: {:?}", h_commitments);
 
-    let x = transcript3.squeeze_challenge_scalar::<()>();
-    // println!("x1: {:?}", x);
+    // let x = transcript3.squeeze_challenge_scalar::<()>();
+    // // println!("x1: {:?}", x);
 
-    let xn = x.pow(&[params.n() as u64, 0, 0, 0]);
-    // println!("xn1: {:?}", xn);
+    // let xn = x.pow(&[params.n() as u64, 0, 0, 0]);
+    // // println!("xn1: {:?}", xn);
 
-    let min_rotation: i32 = 0;
-    let max_rotation: i32 = 0;
-    let max_instance_len: i32 = 0;
+    // let min_rotation: i32 = 0;
+    // let max_rotation: i32 = 0;
+    // let max_instance_len: i32 = 0;
 
-    // there are no public inputs (instances), so it makes sense that this is []
-    let l_i_s = pk.get_vk().get_domain().l_i_range(
-        *x,
-        xn,
-        -max_rotation..max_instance_len as i32 + min_rotation.abs());
+    // // there are no public inputs (instances), so it makes sense that this is []
+    // let l_i_s = pk.get_vk().get_domain().l_i_range(
+    //     *x,
+    //     xn,
+    //     -max_rotation..max_instance_len as i32 + min_rotation.abs());
     
-    let instances: Vec<Vec<Scalar>> = [[].to_vec()].to_vec();
-    // println!("instances1: {:?}", instances);
+    // let instances: Vec<Vec<Scalar>> = [[].to_vec()].to_vec();
+    // // println!("instances1: {:?}", instances);
 
-    let advice_evals = (0..3)
-        .map(|_| transcript3.read_scalar().expect(""))
-        .collect::<Vec<_>>();
-    // println!("advice_evals1: {:?}", advice_evals);
+    // let advice_evals = (0..3)
+    //     .map(|_| transcript3.read_scalar().expect(""))
+    //     .collect::<Vec<_>>();
+    // // println!("advice_evals1: {:?}", advice_evals);
 
-    let fixed_evals = (0..4)
-        .map(|_| transcript3.read_scalar().expect(""))
-        .collect::<Vec<_>>();
-    // println!("fixed_evals1: {:?}", fixed_evals);
+    // let fixed_evals = (0..4)
+    //     .map(|_| transcript3.read_scalar().expect(""))
+    //     .collect::<Vec<_>>();
+    // // println!("fixed_evals1: {:?}", fixed_evals);
     
-    // part of vanishing object
-    let random_eval : Scalar = transcript3.read_scalar().expect("");
-    // println!("random_eval1: {:?}", random_eval);
+    // // part of vanishing object
+    // let random_eval : Scalar = transcript3.read_scalar().expect("");
+    // // println!("random_eval1: {:?}", random_eval);
 
-    // this is contained in the permutatuins_common object
-    let permutation_evals = (0..1)
-        .map(|_| transcript3.read_scalar().expect(""))
-        .collect::<Vec<_>>();
-    // println!("permutation_evals1: {:?}", permutation_evals);
+    // // this is contained in the permutatuins_common object
+    // let permutation_evals = (0..1)
+    //     .map(|_| transcript3.read_scalar().expect(""))
+    //     .collect::<Vec<_>>();
+    // // println!("permutation_evals1: {:?}", permutation_evals);
 
-    // note that the permuatuins_evaluated objectet also has the commited G1 point 
-    // for the permutation
-    let permutation_product_eval = transcript3.read_scalar().expect("");
-    // println!("permutation_product_eval1: {:?}", permutation_product_eval);
+    // // note that the permuatuins_evaluated objectet also has the commited G1 point 
+    // // for the permutation
+    // let permutation_product_eval = transcript3.read_scalar().expect("");
+    // // println!("permutation_product_eval1: {:?}", permutation_product_eval);
 
-    let permutation_product_next_eval = transcript3.read_scalar().expect("");
-    // println!("permutation_product_next_eval1: {:?}", permutation_product_next_eval);
+    // let permutation_product_next_eval = transcript3.read_scalar().expect("");
+    // // println!("permutation_product_next_eval1: {:?}", permutation_product_next_eval);
 
-    let lookups_evaluated: Vec<Vec<Scalar>> = [[].to_vec()].to_vec();
-    // println!("lookups_evaluated1: {:?}", lookups_evaluated);
+    // let lookups_evaluated: Vec<Vec<Scalar>> = [[].to_vec()].to_vec();
+    // // println!("lookups_evaluated1: {:?}", lookups_evaluated);
 
-    // TODO: Understand construction of queries and below link with pairing check
+    // // TODO: Understand construction of queries and below link with pairing check
 
-    // this is inside the gwc verifier https://github.com/perturbing/halo2/blob/main/halo2_proofs/src/poly/kzg/multiopen/gwc/verifier.rs
-    let v = transcript3.squeeze_challenge_scalar::<()>();
-    println!("v1: {:?}", v);
+    // let blinding_factors = pk.get_vk().cs.blinding_factors();
+    // let l_evals = pk.get_vk().get_domain().l_i_range(*x, xn, (-((blinding_factors + 1) as i32))..=0);
+    // // println!("l_evals: {:?}", l_evals);
+    // let l_last = l_evals.last().expect("must have at least one element");
+    // let l_blind = l_evals[1..(1+blinding_factors)]
+    //     .iter()
+    //     .fold(Scalar::ZERO, |acc, eval| acc + eval);
+    // let l_0 = l_evals[1 + blinding_factors];
+    
+    // // // this is inside the gwc verifier https://github.com/perturbing/halo2/blob/main/halo2_proofs/src/poly/kzg/multiopen/gwc/verifier.rs
+    // // let v = transcript3.squeeze_challenge_scalar::<()>();
+    // // // println!("v1: {:?}", v);
 
-    let w: Vec<G1Affine> = (0..2)
-        .map(|_| transcript3.read_point().expect(""))
-        .collect::<Vec<_>>();
-    // println!("w1: {:?}", w);
+    // // let w: Vec<G1Affine> = (0..2)
+    // //     .map(|_| transcript3.read_point().expect(""))
+    // //     .collect::<Vec<_>>();
+    // // // println!("w1: {:?}", w);
 
-    let u = transcript3.squeeze_challenge_scalar::<()>();
-    println!("u1: {:?}", u);
+    // // let u = transcript3.squeeze_challenge_scalar::<()>();
+    // // // println!("u1: {:?}", u);
     
     println!("Passed");
 }
