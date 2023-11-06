@@ -3,10 +3,13 @@
 #![allow(dead_code)]
 use core::num;
 use std::marker::PhantomData;
+use std::iter;
 
+use halo2_proofs::halo2curves::group::{Curve, Group};
 use halo2_proofs::plonk::{Advice, vanishing, Circuit, Column, ConstraintSystem, create_proof, Error, Fixed, keygen_pk, keygen_vk, verify_proof, Selector};
-use halo2_proofs::halo2curves::bls12_381::{Bls12, G1Affine, Scalar};
+use halo2_proofs::halo2curves::bls12_381::{Bls12, G1Affine, Scalar, G1Projective};
 use halo2_proofs::halo2curves::ff::Field;
+use halo2_proofs::halo2curves::ff::PrimeField;
 use halo2_proofs::circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value, Chip, Region};
 use halo2_proofs::dev::MockProver;
 use halo2_proofs::poly::commitment::Verifier;
@@ -17,8 +20,11 @@ use halo2_proofs::poly::Rotation;
 use halo2_proofs::transcript::{Blake2bRead, Blake2bWrite, Challenge255, TranscriptReadBuffer, TranscriptWriterBuffer, TranscriptRead};
 use halo2_proofs::transcript::Transcript;
 use halo2_proofs::poly::commitment::Params;
+use halo2_proofs::arithmetic::CurveAffine;
 use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
+
+
 
 trait NumericInstructions<F: Field>: Chip<F> {
     /// Variable representing a number.
@@ -318,15 +324,313 @@ fn main() {
     let proof = transcript.finalize();
 
     let verifier = SingleStrategy::new(&params);
-    let mut transcript = Blake2bRead::<_, _, Challenge255<G1Affine>>::init(proof.as_slice());
+    let mut transcript_verifier = Blake2bRead::<_, _, Challenge255<G1Affine>>::init(proof.as_slice());
     
     verify_proof::<_, VerifierGWC<Bls12>, _, _, _>(
         &params,
         &pk.get_vk(),
         verifier,
         &[&[]],
-        &mut transcript
+        &mut transcript_verifier
     ).expect("Verification failed");
+
+    // FROM THIS POINT WE MIMIC THE VERIFIER STEP BY STEP WITHOUT GENERIC CODE
+    // SO IT IS SPECIFIED TO ONLY THIS EXAMPLE!
+
+    // first  we initialize a transcript to store the proof.
+    let mut transcript = Blake2bRead::<_, _, Challenge255<G1Affine>>::init(proof.as_slice());
+
+    let vk = pk.get_vk();
+    // Add verification key hash to transcript
+    vk.hash_into(&mut transcript).expect("Failed to hash into");
+
+    // We have two advice commitments
+    let advice_commitments = (0..2)
+        .map(|_| transcript.read_point().unwrap())
+        .collect::<Vec<_>>();
+    // println!("advice_commitments: {:?}", advice_commitments);
+
+    // Sample theta challenge for keeping lookup columns linearly independent
+    // Even if we don't have lookups, we need to keep this in order to be consistent with the transcript
+    let _theta = transcript.squeeze_challenge_scalar::<()>();
+    // println!("theta: {:?}", _theta);
+
+    // Sample beta challenge
+    let beta = transcript.squeeze_challenge_scalar::<()>();
+    // println!("beta: {:?}", beta);
+
+    // Sample gamma challenge
+    let gamma = transcript.squeeze_challenge_scalar::<()>();
+    // println!("gamma: {:?}", gamma);
+
+    // We should have three permutations commitments
+    let permutations_committed = (0..3)
+        .map(|_| transcript.read_point().expect("aha"))
+        .collect::<Vec<_>>();
+    // println!("permutations_committed: {:?}", permutations_committed);
+
+    // Now we read the commitment of a randomly sampled polynomial (step 3 of protocol)
+    let vanishing_rand = transcript.read_point().unwrap();
+
+    // Sample y challenge, which keeps the gates linearly independent.
+    let y = transcript.squeeze_challenge_scalar::<()>();
+    // println!("y: {:?}", y);
+
+    // Now we get the commitments of the split H polynomial, which is split in two parts
+    // TODO: Wait, why is this split only in two :thinking-face:
+    let vanishing_split = (0..2)
+        .map(|_| transcript.read_point().expect("Failed here"))
+        .collect::<Vec<_>>();
+
+    // Sample x challenge, which is used to ensure the circuit is
+    // satisfied with high probability.
+    let x = transcript.squeeze_challenge_scalar::<()>();
+    // println!("x: {:?}", x);
+
+    // We don't have instance evals
+    let _instance_evals = (0..0).map(|_| transcript.read_scalar().unwrap())
+        .collect::<Vec<_>>();
+
+    // We have three evaluation of advice columns. 1 for each advice, and one for the next of the first advice
+    let advice_evals = (0..3)
+        .map(|_| transcript.read_scalar().unwrap())
+        .collect::<Vec<_>>();
+    
+    // We have two evaluations of fixed evals. One for our fixed value and another one for the selector
+    let fixed_evals = (0..2)
+        .map(|_| transcript.read_scalar().unwrap())
+        .collect::<Vec<_>>();
+
+    // Random point to prove correctness of the random commitment of the vanishing polynomial
+    let random_eval = transcript.read_scalar().expect("aha");
+
+    // Evaluations of the permutations polynomials. We get three scalars.
+    let permutations_common_evals = (0..3)
+        .map(|_| transcript.read_scalar().unwrap())
+        .collect::<Vec<_>>();
+    // println!("permutations_common_evals: {:?}", permutations_common_evals);
+
+        // Now we need the evaluations used to validate the permutation argument, meaning evaluations at the
+    // current and next powers of omega, and for all except the last, to the last power of omega.
+    // We build three tuples for each split of the polynomial
+    let permutations_evaluated_a = (
+        permutations_committed[0],
+        transcript.read_scalar().unwrap(),
+        transcript.read_scalar().unwrap(),
+        transcript.read_scalar().unwrap(),
+    );
+    let permutations_evaluated_b = (
+        permutations_committed[1],
+        transcript.read_scalar().unwrap(),
+        transcript.read_scalar().unwrap(),
+        transcript.read_scalar().unwrap(),
+    );
+    // We don't need the evaluation of the last power of omega for the last one.
+    let permutations_evaluated_c = (
+        permutations_committed[2],
+        transcript.read_scalar().unwrap(),
+        transcript.read_scalar().unwrap(),
+    );
+
+    // This check ensures the circuit is satisfied so long as the polynomial
+    // commitments open to the correct values.
+    let vanishing = {
+        // x^n
+        let xn = x.pow(&[params.n() as u64, 0, 0, 0]);
+
+        let blinding_factors = vk.cs.blinding_factors();
+        let l_evals = vk
+            .get_domain()
+            .l_i_range(*x, xn, (-((blinding_factors + 1) as i32))..=0);
+        assert_eq!(l_evals.len(), 2 + blinding_factors);
+        let l_last = l_evals[0];
+        let l_blind: Scalar = l_evals[1..(1 + blinding_factors)]
+            .iter()
+            .fold(Scalar::ZERO, |acc, eval| acc + eval);
+        let l_0 = l_evals[1 + blinding_factors];
+
+        // (1 - (l_last(X) + l_blind(X))) * (
+        //   z_i(\omega X) \prod (p(X) + \beta s_i(X) + \gamma)
+        // - z_i(X) \prod (p(X) + \delta^i \beta X + \gamma)
+        // )
+        let last_permutation_constraint = |col:Scalar, col_eval:Scalar, perm_eval, left: &mut Scalar, delta_power: u64| {
+            *left *= &(col + &(*beta * col_eval) + &*gamma);
+
+            let mut right = perm_eval;
+
+            let current_delta =
+                *beta * *x * &(Scalar::DELTA
+                    .pow_vartime(&[delta_power, 0, 0 ,0])); // chunk_len = 1
+            right *= &(col + &current_delta + &*gamma);
+
+            (*left - &right) * (Scalar::ONE - &(l_last + &l_blind))
+        };
+
+        // Compute the expected value of h(x)
+        let expressions = {
+            let fixed_evals = &fixed_evals;
+            let advice_evals = &advice_evals;
+            let _instance_evals = &_instance_evals; // No instance values in our example
+
+            // We have only one gate, which we evaluate directly.
+            // We have two evaluations of fixed columns, one for the fixed column (which we don't use
+            // in the gate) and one for the selector (which we use here),
+            iter::once(fixed_evals[1] * (advice_evals[0] * advice_evals[1] - advice_evals[2]))
+                // Now we work on the permutation argument
+                // Enforce only for the first set.
+                // l_0(X) * (1 - z_0(X)) = 0
+                // CP1 in notes
+                .chain(iter::once(l_0 * &(Scalar::ONE - &permutations_evaluated_a.1)))
+                // Next we enforce only for the last set.
+                // l_last(X) * (z_l(X)^2 - z_l(X)) = 0
+                // CP2 in notes
+                .chain(iter::once(
+                    &l_last * &(permutations_evaluated_c.1.square() - &permutations_evaluated_c.1),
+                ))
+                // Except for the first set, enforce.
+                // l_0(X) * (z_i(X) - z_{i-1}(\omega^(last) X)) = 0
+                // CP3 and CP4 in notes
+                .chain(iter::once((permutations_evaluated_b.1 - permutations_evaluated_a.3) * &l_0))
+                .chain(iter::once((permutations_evaluated_c.1 - permutations_evaluated_b.3) * &l_0))
+                // And for all the sets we enforce:
+                // (1 - (l_last(X) + l_blind(X))) * (
+                //   z_i(\omega X) \prod (p(X) + \beta s_i(X) + \gamma)
+                // - z_i(X) \prod (p(X) + \delta^i \beta X + \gamma)
+                // )
+                //
+                // The order of our columns in the permutation argument is:
+                // 1. Fixed column CP7 in notes
+                // 2. Advice column CP5 in notes
+                // 3. Advice column CP6 in notes
+                .chain(iter::once({
+                    let mut left = permutations_evaluated_a.2;
+                    last_permutation_constraint(fixed_evals[0], permutations_common_evals[0], permutations_evaluated_a.1, &mut left, 0)
+                }))
+                .chain(iter::once({
+                    let mut left = permutations_evaluated_b.2;
+                    last_permutation_constraint(advice_evals[0], permutations_common_evals[1], permutations_evaluated_b.1, &mut left, 1)
+                }))
+                .chain(iter::once({
+                    let mut left = permutations_evaluated_c.2;
+                    last_permutation_constraint(advice_evals[1], permutations_common_evals[2], permutations_evaluated_c.1, &mut left, 2)
+                }))
+        };
+
+        // Now we compute the vanishing polynomial expected evaluation
+        let expected_h_eval = expressions.fold(Scalar::ZERO, |h_eval, v| h_eval * &*y + &v);
+        let expected_h_eval = expected_h_eval * ((xn - Scalar::ONE).invert().unwrap());
+        // println!("expected_h_eval: {:?}", expected_h_eval);
+
+        // and its commitment
+        let h_commitment = vanishing_split
+            .iter()
+            .rev()
+            .fold(G1Projective::identity().to_affine(), |mut acc, commitment| {
+                acc = (acc * xn).to_affine();
+                acc = (acc + *commitment).to_affine();
+                acc
+            });
+
+        (h_commitment, expected_h_eval)
+    };
+    // println!("vanishing: {:?}", vanishing);
+
+    let blinding_factors = vk.cs.blinding_factors();
+    let x_next = vk.get_domain().rotate_omega(*x, Rotation::next());
+    let x_last = vk.get_domain().rotate_omega(*x, Rotation(-((blinding_factors + 1) as i32)));
+
+    #[derive(Debug, Clone)]
+    pub struct MinimalVerifierQuery<C: CurveAffine> {
+        /// Point at which poly is evaluated
+        pub(crate) point: C::Scalar,
+        /// Commitment
+        pub(crate) commitment: C,
+        /// Evaluation of polynomial at query point
+        pub(crate) eval: C::Scalar,
+    }
+
+    let queries = {
+        iter::empty()
+            .chain(vk.cs.advice_queries().iter().enumerate().map(
+                move |(query_index, &(column, at))| MinimalVerifierQuery {
+                    point: vk.get_domain().rotate_omega(*x, at),
+                    commitment: advice_commitments[column.index()],
+                    eval: advice_evals[query_index],
+                },
+            ))
+            // Open permutation product commitments at x and \omega x
+            .chain(Some(MinimalVerifierQuery {
+                point: *x,
+                commitment: permutations_evaluated_a.0,
+                eval: permutations_evaluated_a.1,
+            }))
+            .chain(Some(MinimalVerifierQuery {
+                point: x_next,
+                commitment: permutations_evaluated_a.0,
+                eval: permutations_evaluated_a.2,
+            }))
+            .chain(Some(MinimalVerifierQuery {
+                point: *x,
+                commitment: permutations_evaluated_b.0,
+                eval: permutations_evaluated_b.1,
+            }))
+            .chain(Some(MinimalVerifierQuery {
+                point: x_next,
+                commitment: permutations_evaluated_b.0,
+                eval: permutations_evaluated_b.2,
+            }))
+            .chain(Some(MinimalVerifierQuery {
+                point: *x,
+                commitment: permutations_evaluated_c.0,
+                eval: permutations_evaluated_c.1,
+            }))
+            .chain(Some(MinimalVerifierQuery {
+                point: x_next,
+                commitment: permutations_evaluated_c.0,
+                eval: permutations_evaluated_c.2,
+            }))
+            .chain(Some(MinimalVerifierQuery {
+                point: x_last,
+                commitment: permutations_evaluated_b.0,
+                eval: permutations_evaluated_b.3,
+            }))
+            .chain(Some(MinimalVerifierQuery {
+                point: x_last,
+                commitment: permutations_evaluated_a.0,
+                eval: permutations_evaluated_a.3,
+            }))
+    }
+        .chain(
+            vk.cs
+                .fixed_queries()
+                .iter()
+                .enumerate()
+                .map(|(query_index, &(column, at))| MinimalVerifierQuery {
+                    point: vk.get_domain().rotate_omega(*x, at),
+                    commitment: vk.fixed_commitments()[column.index()],
+                    eval: fixed_evals[query_index],
+                }),
+        )
+        .chain(vk.permutation().commitments()
+            .iter()
+            .zip(permutations_common_evals.iter())
+            .map(move |(commitment, &eval)| MinimalVerifierQuery {
+                point: *x,
+                commitment: *commitment,
+                eval,
+            }))
+        .chain(Some(MinimalVerifierQuery {
+            point: *x,
+            commitment: vanishing.0.clone(),
+            eval: vanishing.1,
+        }))
+        .chain(Some(MinimalVerifierQuery {
+            point: *x,
+            commitment: vanishing_rand,
+            eval: random_eval,
+        }));
+
+    println!("queries: {:?}", queries.collect::<Vec<_>>());
 
     println!("Passed");
 }
