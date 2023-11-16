@@ -1,0 +1,89 @@
+commitment_data: [
+    CommitmentData { 
+        queries: [
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x1989f8f7d4b7f88f0c33cd230a87ebde032a352a69fb507f3ea672f469521a4508f1785788464905b86532f4bee5f712, 0x152127019192d80119e14cbb1110f6039bf7cfa39f68051028bd4e5e42cc7b550e47c6aa3af6db880bf78aea38c14ab2), 
+                eval: 0x69d64021651c238af83de34811a80429004c88281a5fa1f29ca8e307bb3b53eb }, 
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x11e27a84d7b90b7c055c5ec2f9a3132e2c7e3535585ab0b58c341044f1b0dcb8086ffc2d25037b36db059a79a72d27b0, 0x0e03551e576ed8dc80b7bfc9d3e9d0bbd5a8180148d40dc9a8ac01c7d3c9eec0c23b4d6cc3c813ddee293cb42098fb20), 
+                eval: 0x5dc12581f2a65ad8acfa0704e7f4be4e17c902e78fc274c6eab4cefcac2c1ea7 }, 
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x1182d70513be4358067f9dcd8b5929d0ae11fe956d40f93bc97acbe790459da02702a586f273820be73bbeb6790038bd, 0x0116c98a2e230ec70a8c284c2d0db36632f31eccdb9d1e422c1f11eb88e992b1f63bd2324a2f881e88249bc5205a9278), 
+                eval: 0x01643cdf7db714d1a78cd8be10a1670d3e858f15ff9f74d4dd53ae0c420166b1 }, 
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x0db95bb3a61dfd424123715569daf01a3a000c011fd02369724bd28b995f26dbb0ab12b33f199bcda42b528b5e79b787, 0x1636588c1c8fcec78f6ce4335cd0aa690007d852f6b9c61109f9299c04410e684ee0a7784bbb37cb045ce1da272c3069), 
+                eval: 0x249137f4cf370cc888b45f6b9586516d445d0f76a294b59dc4e3589b695d3ef8 }, 
+            MinimalVerifierQuery { 
+                oint: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x09e1752080bd9e6759dcb9c74d0f28205309186a9a4e6ef24d0911563afb5687c4383655444f2ecb83eb3140aaae86e3, 0x08954eaf87cdab2088c6fc050dd82f68be3dde5773588bcf7817527a7ff45a0a1aee00e918a1e53e63dce79261722dd4), 
+                eval: 0x59a14ab74261aa5aee6b70707b86c23967c5eabb5536500dc3e8ca589a46853b }, 
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x0603551c6c2a90e7b68294c259d32c4792bf6e1b132f89b6115ff95b30f26d6999fb59b306cdf5e00ca4c316b298ad41, 0x02bdb2133a7ad69217ad037340dac90c4acce06795622fdb658cf92f8d65045079f060410443f8176ace19d732d7d811), 
+                eval: 0x4e72378acea7534b83907f51d7888a51955ec01604e4658e4ed0f380039e3b0c }, 
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x0ab9a9476efea761940a4f78495158e65d48696158f2170c3d20bf45b6299114ccf20095c2d78ce2dab13eee2075dae7, 0x0003eef5b1f7a77cde9e065d9267614c695bcd33f66da0b246938563da1d6df26f7b512742cb86333ff37031a6362de6), 
+                eval: 0x247629d8ff896c6795676083be8899173876ae91e015e90b8e109cd7a7d11555 }, 
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x08b9ee062b453d81c97be3c1c494adff27baf70f21bfa9fc88ec176f9e527f085d03bb7d19d0a02f9f905b2721f78d94, 0x0f7c00db84767ebafc38226b7ed0233df641ad1522b4fc6375f20035adf85d9c19496fb8eb9d98917f776b21e6c4b6bd), 
+                eval: 0x61e9efd77e396e75b339aa6239afcc31ee9923e0d6f051b870bff3745498b158 }, 
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x11dbdf4c7d5051f61d42dfa1a4833c6201ac0ac2e0913e3bcf739329f767edb794a2c02d27326c1c76b6bfa8a480c95e, 0x18dea6dc5b88777c5f484c2a98b3c9ae778cac09d8f3c1c0d0e4d1ff2eb7d14c3ff816b5f571b9e8883de4c5f7144182), 
+                eval: 0x60a6c55142bcde6edfe50a66cc1568906b76c9ebb6360b1053221478a6b6d525 }, 
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x0b3e874ac9cc08ae960ec570f7a03a0a3d0f7aaacbfd869a35961f021ec7b78e24cba97bbd3f32e88f5ab7dd4f1d911f, 0x0a56960ff407c0a0932532dd63f4a62387b5a79bb055d594675655c79b9cfe43641de439cb923dede9baa01c884936f4), 
+                eval: 0x238c2524a82835a0b47e0512b536435dc68a329b67fda5038d6aab9bcac17306 }, 
+            // this point was split in the halo2 implementation
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x12aec27c6e99aef5029ffa249551d400df54fd0e81d43d4d754b315161f59924ca632d6ab7468293e9024e59ced8d0de, 0x0c74ba8c8e7448bb2ec63ca94e6ecee49dd16b39ec00e176a75e3a82dde201a0f36f5f0e0675fa7ce8fd01c60ca8148d), 
+                eval: 0x4dd337564ea774994f25a391618e17d144307294a787d1634c24626d754babea }, 
+            MinimalVerifierQuery { 
+                point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+                commitment: (0x0ae1b0bfb39c18ec626eac13ff4c8350588523e9a9b6fa9465f6fd42a120377a824d34f3d929c51ebfe115b00a57bcce, 0x157f0458fa67bb7f7955bc3431a6b378157db8aea039cbd9f66c1bc52ab465de1a25173e9179c6c1b47fab0caaa819a2),
+                eval: 0x331bde93b238176b254fe87a28bd1e49e27622054e78861f70918e01fc353b6d }
+            ], 
+        point: 0x08df5d531893638cae64f17beb45f6c77db95cb247abeeaae9e1493d3c05f9bb, 
+        _marker: PhantomData<halo2curves::bls12_381::scalar::Scalar> }, 
+    CommitmentData { 
+        queries: [
+            MinimalVerifierQuery { p
+                point: 0x56ed4f120237065e3b004b16e322a894fce777e8c14f1ed40fa58b32b26d76a4, 
+                commitment: (0x1989f8f7d4b7f88f0c33cd230a87ebde032a352a69fb507f3ea672f469521a4508f1785788464905b86532f4bee5f712, 0x152127019192d80119e14cbb1110f6039bf7cfa39f68051028bd4e5e42cc7b550e47c6aa3af6db880bf78aea38c14ab2), 
+                eval: 0x3cbc5664ffe6c504d70e3aa5fba950b5c36e40457c2c4f295298823e50652d6c }, 
+            MinimalVerifierQuery { 
+                point: 0x56ed4f120237065e3b004b16e322a894fce777e8c14f1ed40fa58b32b26d76a4, 
+                commitment: (0x1182d70513be4358067f9dcd8b5929d0ae11fe956d40f93bc97acbe790459da02702a586f273820be73bbeb6790038bd, 0x0116c98a2e230ec70a8c284c2d0db36632f31eccdb9d1e422c1f11eb88e992b1f63bd2324a2f881e88249bc5205a9278), 
+                eval: 0x0fccd1baa0342ff9b94b02263e8cff140a3e2e1027cbeb85e11736d91fdb92d2 }, 
+            MinimalVerifierQuery { 
+                point: 0x56ed4f120237065e3b004b16e322a894fce777e8c14f1ed40fa58b32b26d76a4, 
+                commitment: (0x0db95bb3a61dfd424123715569daf01a3a000c011fd02369724bd28b995f26dbb0ab12b33f199bcda42b528b5e79b787, 0x1636588c1c8fcec78f6ce4335cd0aa690007d852f6b9c61109f9299c04410e684ee0a7784bbb37cb045ce1da272c3069), 
+                eval: 0x19bce1d6a192920052217e7df37a876b1f5e18da459b263f9bce3043d52d7820 }, 
+            MinimalVerifierQuery { 
+                point: 0x56ed4f120237065e3b004b16e322a894fce777e8c14f1ed40fa58b32b26d76a4, 
+                commitment: (0x09e1752080bd9e6759dcb9c74d0f28205309186a9a4e6ef24d0911563afb5687c4383655444f2ecb83eb3140aaae86e3, 0x08954eaf87cdab2088c6fc050dd82f68be3dde5773588bcf7817527a7ff45a0a1aee00e918a1e53e63dce79261722dd4), 
+                eval: 0x28cd3537245ce307bca8a079d33834a286dbab28b169f9421ab53eb662db977d }
+        ], 
+        point: 0x56ed4f120237065e3b004b16e322a894fce777e8c14f1ed40fa58b32b26d76a4, 
+        _marker: PhantomData<halo2curves::bls12_381::scalar::Scalar> }, 
+    CommitmentData { 
+        queries: [
+            MinimalVerifierQuery { 
+                point: 0x1062241eb3adc1c31cb0d726e6052289aa79249e3ae69c01744c38ca54cdab9c, 
+                commitment: (0x0db95bb3a61dfd424123715569daf01a3a000c011fd02369724bd28b995f26dbb0ab12b33f199bcda42b528b5e79b787, 0x1636588c1c8fcec78f6ce4335cd0aa690007d852f6b9c61109f9299c04410e684ee0a7784bbb37cb045ce1da272c3069), 
+                eval: 0x510028b8bc467777f9aecc294173520831a58f9f10a0f6fbb3f7476af89debe3 }, 
+            MinimalVerifierQuery { 
+                point: 0x1062241eb3adc1c31cb0d726e6052289aa79249e3ae69c01744c38ca54cdab9c, 
+                commitment: (0x1182d70513be4358067f9dcd8b5929d0ae11fe956d40f93bc97acbe790459da02702a586f273820be73bbeb6790038bd, 0x0116c98a2e230ec70a8c284c2d0db36632f31eccdb9d1e422c1f11eb88e992b1f63bd2324a2f881e88249bc5205a9278), 
+                eval: 0x3762f1f8a6a923a2828eb6c3d75534280d54a1ab555cf4d2c41d25b446fa571b }
+        ], 
+    point: 0x1062241eb3adc1c31cb0d726e6052289aa79249e3ae69c01744c38ca54cdab9c, _marker: PhantomData<halo2curves::bls12_381::scalar::Scalar> }
+]

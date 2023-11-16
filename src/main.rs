@@ -2,29 +2,35 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 use core::num;
+use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::iter;
 
+use halo2_proofs::halo2curves::bn256::G1;
 use halo2_proofs::halo2curves::group::{Curve, Group};
 use halo2_proofs::plonk::{Advice, vanishing, Circuit, Column, ConstraintSystem, create_proof, Error, Fixed, keygen_pk, keygen_vk, verify_proof, Selector};
-use halo2_proofs::halo2curves::bls12_381::{Bls12, G1Affine, Scalar, G1Projective};
+use halo2_proofs::halo2curves::bls12_381::{Bls12, G1Affine, Scalar, G1Projective, MillerLoopResult};
 use halo2_proofs::halo2curves::ff::Field;
 use halo2_proofs::halo2curves::ff::PrimeField;
 use halo2_proofs::circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value, Chip, Region};
 use halo2_proofs::dev::MockProver;
-use halo2_proofs::poly::commitment::Verifier;
-use halo2_proofs::poly::kzg::strategy::SingleStrategy;
+use halo2_proofs::poly::commitment::{Verifier, Blind, self};
+use halo2_proofs::poly::kzg::msm::MSMKZG;
+use halo2_proofs::poly::kzg::strategy::{SingleStrategy, GuardKZG};
+use halo2_proofs::poly::kzg::multiopen::CommitmentData;
 use halo2_proofs::poly::kzg::commitment::{KZGCommitmentScheme, ParamsKZG};
 use halo2_proofs::poly::kzg::multiopen::{ProverGWC, VerifierGWC};
-use halo2_proofs::poly::Rotation;
+use halo2_proofs::poly::{Rotation, self};
+use halo2_proofs::poly::query::MinimalVerifierQuery;
+use halo2_proofs::poly::query::Query;
 use halo2_proofs::transcript::{Blake2bRead, Blake2bWrite, Challenge255, TranscriptReadBuffer, TranscriptWriterBuffer, TranscriptRead};
 use halo2_proofs::transcript::Transcript;
 use halo2_proofs::poly::commitment::Params;
-use halo2_proofs::arithmetic::CurveAffine;
+use halo2_proofs::arithmetic::{CurveAffine, powers};
 use rand::{Rng, SeedableRng};
+use halo2_proofs::poly::query::CommitmentReference;
 use rand::rngs::StdRng;
-
-
+use halo2_proofs::poly::commitment::MSM;
 
 trait NumericInstructions<F: Field>: Chip<F> {
     /// Variable representing a number.
@@ -310,7 +316,6 @@ fn main() {
     let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
 
     let mut transcript = Blake2bWrite::<_, _, Challenge255<G1Affine>>::init(vec![]);
-    
 
     create_proof::<KZGCommitmentScheme<Bls12>, ProverGWC<Bls12>, _, _, _, _>(
         &params,
@@ -539,16 +544,6 @@ fn main() {
     let x_next = vk.get_domain().rotate_omega(*x, Rotation::next());
     let x_last = vk.get_domain().rotate_omega(*x, Rotation(-((blinding_factors + 1) as i32)));
 
-    #[derive(Debug, Clone)]
-    pub struct MinimalVerifierQuery<C: CurveAffine> {
-        /// Point at which poly is evaluated
-        pub(crate) point: C::Scalar,
-        /// Commitment
-        pub(crate) commitment: C,
-        /// Evaluation of polynomial at query point
-        pub(crate) eval: C::Scalar,
-    }
-
     let queries = {
         iter::empty()
             .chain(vk.cs.advice_queries().iter().enumerate().map(
@@ -628,10 +623,99 @@ fn main() {
             point: *x,
             commitment: vanishing_rand,
             eval: random_eval,
-        }));
+        })).collect::<Vec<_>>();
+    // println!("queries: {:?}", queries);
 
-    println!("queries: {:?}", queries.collect::<Vec<_>>());
+    let v  = transcript.squeeze_challenge_scalar::<()>().inner;
+    // println!("v: {:?}", v);
 
+    let mut point_query_map: Vec<(Scalar, Vec<_>)> = Vec::new();
+    for query in queries {
+        if let Some(pos) = point_query_map
+            .iter()
+            .position(|(point, _)| *point == query.get_point())
+        {
+            let (_, queries) = &mut point_query_map[pos];
+            queries.push(query);
+        } else {
+            point_query_map.push((query.get_point(), vec![query]));
+        }
+    }
+
+    let commitment_data = point_query_map
+    .into_iter()
+    .map(|(point, queries)| CommitmentData {
+        queries,
+        point,
+        _marker: PhantomData,
+    })
+    .collect::<Vec<_>>();
+    // println!("commitment_data: {:?}", commitment_data);
+    
+    let w = (0..3)
+        .map(|_| transcript.read_point().unwrap())
+        .collect::<Vec<_>>();
+    // println!("w: {:?}", w);
+    
+    let w_clone = w.clone();
+
+    let u = transcript.squeeze_challenge_scalar::<()>().inner;
+
+    let mut commitment_multi = MSMKZG::<Bls12>::new();
+    let mut eval_multi = Scalar::ZERO;
+
+    let mut witness = MSMKZG::<Bls12>::new();
+    let mut witness_with_aux = MSMKZG::<Bls12>::new();
+
+    for ((commitment_at_a_point, wi), power_of_u) in
+        commitment_data.iter().zip(w.into_iter()).zip(powers(u))
+    {
+        assert!(!commitment_at_a_point.queries.is_empty());
+        let z = commitment_at_a_point.point;
+
+        let (mut commitment_batch, eval_batch) = commitment_at_a_point
+                .queries
+                .iter()
+                .zip(powers(v))
+                .map(|(query, power_of_v)| {
+                    assert_eq!(query.get_point(), z);
+
+                    let mut msm = MSMKZG::<Bls12>::new();
+                    let commitment = {
+                                msm.append_term(power_of_v, query.commitment.into());
+                                msm
+                    };
+                    let eval = power_of_v * query.get_eval();
+
+                    (commitment, eval)
+                })
+                .reduce(|(mut commitment_acc, eval_acc), (commitment, eval)| {
+                    commitment_acc.add_msm(&commitment);
+                    (commitment_acc, eval_acc + eval)
+                })
+                .unwrap();
+
+        commitment_batch.scale(power_of_u);
+        commitment_multi.add_msm(&commitment_batch);
+        eval_multi += power_of_u * eval_batch;
+    
+        witness_with_aux.append_term(power_of_u * z, wi.into());
+        witness.append_term(power_of_u, wi.into());
+    }
+
+    let verifier2 = SingleStrategy::new(&params);
+    let mut msm_accumulator = verifier2.msm;
+
+    msm_accumulator.left.add_msm(&witness);
+
+    msm_accumulator.right.add_msm(&witness_with_aux);
+    msm_accumulator.right.add_msm(&commitment_multi);
+    let g0:G1Projective = params.g[0].into();
+    msm_accumulator.right.append_term(eval_multi, -g0);
+
+    let final_verify = msm_accumulator.check();
+
+    println!("Final pairing check: {:?}", final_verify);
     println!("Passed");
 }
 
